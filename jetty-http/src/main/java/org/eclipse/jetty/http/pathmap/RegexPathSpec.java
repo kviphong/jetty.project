@@ -33,6 +33,12 @@ public class RegexPathSpec extends PathSpec
     public RegexPathSpec(String regex)
     {
         super.pathSpec = regex;
+        
+        if(regex.startsWith("regex|"))
+        {
+            super.pathSpec = regex.substring("regex|".length());
+        }
+        
         boolean inGrouping = false;
         this.pathDepth = 0;
         this.specLength = pathSpec.length();

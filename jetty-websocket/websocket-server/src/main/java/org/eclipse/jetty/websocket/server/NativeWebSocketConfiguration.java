@@ -19,6 +19,7 @@
 package org.eclipse.jetty.websocket.server;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import javax.servlet.ServletContext;
 
@@ -27,6 +28,7 @@ import org.eclipse.jetty.http.pathmap.PathMappings;
 import org.eclipse.jetty.http.pathmap.PathSpec;
 import org.eclipse.jetty.http.pathmap.RegexPathSpec;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
+import org.eclipse.jetty.http.pathmap.UriTemplatePathSpec;
 import org.eclipse.jetty.util.component.ContainerLifeCycle;
 import org.eclipse.jetty.util.component.Dumpable;
 import org.eclipse.jetty.websocket.api.WebSocketException;
@@ -41,7 +43,7 @@ import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
  * Only applicable if using {@link WebSocketUpgradeFilter}
  * </p>
  */
-public class NativeWebSocketConfiguration extends ContainerLifeCycle implements Dumpable
+public class NativeWebSocketConfiguration extends ContainerLifeCycle implements MappedWebSocketCreator, Dumpable
 {
     private final WebSocketServerFactory factory;
     private final PathMappings<WebSocketCreator> mappings = new PathMappings<>();
@@ -110,73 +112,92 @@ public class NativeWebSocketConfiguration extends ContainerLifeCycle implements 
     }
     
     /**
-     * Manually add a WebSocket mapping.
+     * {@inheritDoc}
+     *
      * <p>
      *     If mapping is added before this configuration is started, then it is persisted through
      *     stop/start of this configuration's lifecycle.  Otherwise it will be removed when
      *     this configuration is stopped.
      * </p>
-     *
-     * @param pathSpec the pathspec to respond on
-     * @param creator the websocket creator to activate on the provided mapping.
      */
-    public void addMapping(PathSpec pathSpec, WebSocketCreator creator)
+    @Override
+    public void addMapping(String rawspec, WebSocketCreator creator)
     {
+        PathSpec spec = toPathSpec(rawspec);
         WebSocketCreator wsCreator = creator;
         if (!isRunning())
         {
             wsCreator = new PersistedWebSocketCreator(creator);
         }
-        mappings.put(pathSpec, wsCreator);
+        mappings.put(spec, wsCreator);
     }
     
-    /**
-     * Manually add a WebSocket mapping.
-     *
-     * @param spec the pathspec to respond on
-     * @param creator the websocket creator to activate on the provided mapping
-     * @deprecated use {@link #addMapping(PathSpec, Class)} instead.
-     */
-    @Deprecated
-    public void addMapping(org.eclipse.jetty.websocket.server.pathmap.PathSpec spec, WebSocketCreator creator)
+    private PathSpec toPathSpec(String rawspec)
     {
-        if (spec instanceof org.eclipse.jetty.websocket.server.pathmap.ServletPathSpec)
+        // Determine what kind of path spec we are working with
+        if(rawspec.charAt(0) == '/' || rawspec.startsWith("*.") || rawspec.startsWith("servlet|"))
         {
-            addMapping(new ServletPathSpec(spec.getSpec()), creator);
+            return new ServletPathSpec(rawspec);
+        } else if(rawspec.charAt(0) == '^' || rawspec.startsWith("regex|"))
+        {
+            return new RegexPathSpec(rawspec);
+        } else if(rawspec.startsWith("uri-template|"))
+        {
+            return new UriTemplatePathSpec(rawspec.substring("uri-template|".length()));
         }
-        else if (spec instanceof org.eclipse.jetty.websocket.server.pathmap.RegexPathSpec)
+        
+        /* TODO: add ability to load arbitrary jetty-http PathSpec implementation
+         * perhaps via "fully.qualified.class.name|spec" style syntax
+         */
+        
+        throw new IllegalArgumentException("Unrecognized path spec syntax [" + rawspec + "]");
+    }
+    
+    @Override
+    public WebSocketCreator getMapping(String rawspec)
+    {
+        PathSpec pathSpec = toPathSpec(rawspec);
+        Optional<MappedResource<WebSocketCreator>> optionalHit = mappings.getMappings().stream().filter((resource) ->
+                resource.getPathSpec().equals(pathSpec))
+                .findFirst();
+        if (optionalHit.isPresent())
         {
-            addMapping(new RegexPathSpec(spec.getSpec()), creator);
+            return optionalHit.get().getResource();
         }
         else
         {
-            throw new RuntimeException("Unsupported (Deprecated) PathSpec implementation type: " + spec.getClass().getName());
+            return null;
         }
+    }
+    
+    @Override
+    public boolean removeMapping(String rawspec)
+    {
+        PathSpec pathSpec = toPathSpec(rawspec);
+        mappings.removeIf((resource) -> resource.getPathSpec().equals(pathSpec));
+        return false;
     }
     
     /**
      * Manually add a WebSocket mapping.
      *
-     * @param pathSpec the pathspec to respond on
+     * @param rawspec the pathspec to map to (see {@link MappedWebSocketCreator#addMapping(String, WebSocketCreator)} for syntax details)
      * @param endpointClass the endpoint class to use for new upgrade requests on the provided
      * pathspec (can be an {@link org.eclipse.jetty.websocket.api.annotations.WebSocket} annotated
      * POJO, or implementing {@link org.eclipse.jetty.websocket.api.WebSocketListener})
      */
-    public void addMapping(PathSpec pathSpec, final Class<?> endpointClass)
+    public void addMapping(String rawspec, final Class<?> endpointClass)
     {
-        mappings.put(pathSpec, new WebSocketCreator()
+        PathSpec pathSpec = toPathSpec(rawspec);
+        mappings.put(pathSpec, (req, resp) ->
         {
-            @Override
-            public Object createWebSocket(ServletUpgradeRequest req, ServletUpgradeResponse resp)
+            try
             {
-                try
-                {
-                    return endpointClass.newInstance();
-                }
-                catch (InstantiationException | IllegalAccessException e)
-                {
-                    throw new WebSocketException("Unable to create instance of " + endpointClass.getName(), e);
-                }
+                return endpointClass.newInstance();
+            }
+            catch (InstantiationException | IllegalAccessException e)
+            {
+                throw new WebSocketException("Unable to create instance of " + endpointClass.getName(), e);
             }
         });
     }

@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.DispatcherType;
 
-import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.FilterHolder;
@@ -110,7 +109,7 @@ public class WebSocketUpgradeFilterTest
                 
                 // direct configuration via WSUF
                 wsuf.getFactory().getPolicy().setMaxTextMessageSize(10 * 1024 * 1024);
-                wsuf.addMapping(new ServletPathSpec("/info/*"), infoCreator);
+                wsuf.addMapping("/info/*", infoCreator);
                 
                 server.start();
                 return server;
@@ -139,7 +138,7 @@ public class WebSocketUpgradeFilterTest
                 NativeWebSocketConfiguration configuration = (NativeWebSocketConfiguration) context.getServletContext().getAttribute(NativeWebSocketConfiguration.class.getName());
                 assertThat("NativeWebSocketConfiguration", configuration, notNullValue());
                 configuration.getFactory().getPolicy().setMaxTextMessageSize(10 * 1024 * 1024);
-                configuration.addMapping(new ServletPathSpec("/info/*"), infoCreator);
+                configuration.addMapping("/info/*", infoCreator);
                 
                 server.start();
                 
@@ -166,7 +165,7 @@ public class WebSocketUpgradeFilterTest
                 
                 NativeWebSocketConfiguration configuration = new NativeWebSocketConfiguration(context.getServletContext());
                 configuration.getFactory().getPolicy().setMaxTextMessageSize(10 * 1024 * 1024);
-                configuration.addMapping(new ServletPathSpec("/info/*"), infoCreator);
+                configuration.addMapping("/info/*", infoCreator);
                 context.setAttribute(NativeWebSocketConfiguration.class.getName(), configuration);
                 
                 server.start();
@@ -193,7 +192,7 @@ public class WebSocketUpgradeFilterTest
             
                 NativeWebSocketConfiguration configuration = new NativeWebSocketConfiguration(context.getServletContext());
                 configuration.getFactory().getPolicy().setMaxTextMessageSize(10 * 1024 * 1024);
-                configuration.addMapping(new ServletPathSpec("/info/*"), infoCreator);
+                configuration.addMapping("/info/*", infoCreator);
                 context.addBean(configuration, true);
             
                 FilterHolder wsufHolder = new FilterHolder(new WebSocketUpgradeFilter(configuration));

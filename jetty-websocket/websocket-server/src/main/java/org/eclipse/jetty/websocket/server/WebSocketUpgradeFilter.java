@@ -129,21 +129,23 @@ public class WebSocketUpgradeFilter implements Filter, MappedWebSocketCreator, D
     }
     
     @Override
-    public void addMapping(PathSpec spec, WebSocketCreator creator)
+    public void addMapping(String rawspec, WebSocketCreator creator)
     {
-        configuration.addMapping(spec, creator);
+        configuration.addMapping(rawspec, creator);
     }
     
-    /**
-     * @deprecated use new {@link #addMapping(org.eclipse.jetty.http.pathmap.PathSpec, WebSocketCreator)} instead
-     */
-    @Deprecated
     @Override
-    public void addMapping(org.eclipse.jetty.websocket.server.pathmap.PathSpec spec, WebSocketCreator creator)
+    public WebSocketCreator getMapping(String rawspec)
     {
-        configuration.addMapping(spec, creator);
+        return configuration.getMapping(rawspec);
     }
-
+    
+    @Override
+    public boolean removeMapping(String rawspec)
+    {
+        return configuration.removeMapping(rawspec);
+    }
+    
     @Override
     public void destroy()
     {
@@ -275,12 +277,6 @@ public class WebSocketUpgradeFilter implements Filter, MappedWebSocketCreator, D
             throw new IllegalStateException(this.getClass().getName() + " not initialized yet");
         }
         return configuration;
-    }
-    
-    @Override
-    public MappedResource<WebSocketCreator> getMapping(String target)
-    {
-        return getConfiguration().getMatch(target);
     }
     
     @Override
