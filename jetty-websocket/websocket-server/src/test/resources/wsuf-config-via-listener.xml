@@ -6,6 +6,12 @@
 		 http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
   version="3.1">
 
+  <!-- disable JSR-356 -->
+  <context-param>
+    <param-name>org.eclipse.jetty.websocket.jsr356</param-name>
+    <param-value>false</param-value>
+  </context-param>
+
   <listener>
     <listener-class>org.eclipse.jetty.websocket.server.InfoContextAttributeListener</listener-class>
   </listener>
