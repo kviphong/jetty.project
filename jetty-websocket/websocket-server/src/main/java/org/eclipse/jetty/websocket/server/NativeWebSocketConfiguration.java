@@ -112,6 +112,79 @@ public class NativeWebSocketConfiguration extends ContainerLifeCycle implements 
     }
     
     /**
+     * Manually add a WebSocket mapping.
+     * <p>
+     *     If mapping is added before this configuration is started, then it is persisted through
+     *     stop/start of this configuration's lifecycle.  Otherwise it will be removed when
+     *     this configuration is stopped.
+     * </p>
+     *
+     * @param pathSpec the pathspec to respond on
+     * @param creator the websocket creator to activate on the provided mapping.
+     */
+    public void addMapping(PathSpec pathSpec, WebSocketCreator creator)
+    {
+        WebSocketCreator wsCreator = creator;
+        if (!isRunning())
+        {
+            wsCreator = new PersistedWebSocketCreator(creator);
+        }
+        mappings.put(pathSpec, wsCreator);
+    }
+    
+    /**
+     * Manually add a WebSocket mapping.
+     *
+     * @param spec the pathspec to respond on
+     * @param creator the websocket creator to activate on the provided mapping
+     * @deprecated use {@link #addMapping(PathSpec, Class)} instead.
+     */
+    @Deprecated
+    public void addMapping(org.eclipse.jetty.websocket.server.pathmap.PathSpec spec, WebSocketCreator creator)
+    {
+        if (spec instanceof org.eclipse.jetty.websocket.server.pathmap.ServletPathSpec)
+        {
+            addMapping(new ServletPathSpec(spec.getSpec()), creator);
+        }
+        else if (spec instanceof org.eclipse.jetty.websocket.server.pathmap.RegexPathSpec)
+        {
+            addMapping(new RegexPathSpec(spec.getSpec()), creator);
+        }
+        else
+        {
+            throw new RuntimeException("Unsupported (Deprecated) PathSpec implementation type: " + spec.getClass().getName());
+        }
+    }
+    
+    /**
+     * Manually add a WebSocket mapping.
+     *
+     * @param pathSpec the pathspec to respond on
+     * @param endpointClass the endpoint class to use for new upgrade requests on the provided
+     * pathspec (can be an {@link org.eclipse.jetty.websocket.api.annotations.WebSocket} annotated
+     * POJO, or implementing {@link org.eclipse.jetty.websocket.api.WebSocketListener})
+     */
+    public void addMapping(PathSpec pathSpec, final Class<?> endpointClass)
+    {
+        mappings.put(pathSpec, new WebSocketCreator()
+        {
+            @Override
+            public Object createWebSocket(ServletUpgradeRequest req, ServletUpgradeResponse resp)
+            {
+                try
+                {
+                    return endpointClass.newInstance();
+                }
+                catch (InstantiationException | IllegalAccessException e)
+                {
+                    throw new WebSocketException("Unable to create instance of " + endpointClass.getName(), e);
+                }
+            }
+        });
+    }
+    
+    
+    /**
      * {@inheritDoc}
      *
      * <p>

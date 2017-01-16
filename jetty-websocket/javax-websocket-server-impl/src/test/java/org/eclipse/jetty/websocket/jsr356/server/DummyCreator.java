@@ -24,6 +24,19 @@ import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 public class DummyCreator implements MappedWebSocketCreator
 {
     @Override
+    public void addMapping(org.eclipse.jetty.websocket.server.pathmap.PathSpec spec, WebSocketCreator creator)
+    {
+        /* do nothing */
+    }
+    
+    @Override
+    public void addMapping(org.eclipse.jetty.http.pathmap.PathSpec spec, WebSocketCreator creator)
+    {
+        /* do nothing */
+    }
+    
+    
+    @Override
     public void addMapping(String spec, WebSocketCreator creator)
     {
     }

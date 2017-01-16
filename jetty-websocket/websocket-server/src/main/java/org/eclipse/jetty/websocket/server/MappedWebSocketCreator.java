@@ -45,6 +45,26 @@ public interface MappedWebSocketCreator
     void addMapping(String spec, WebSocketCreator creator);
     
     /**
+     * Add a mapping.
+     *
+     * @param spec the path spec to use
+     * @param creator the creator for the mapping
+     * @deprecated use {@link #addMapping(org.eclipse.jetty.http.pathmap.PathSpec, WebSocketCreator)} instead.
+     * (support classes moved to generic jetty-http project)
+     */
+    @Deprecated
+    void addMapping(org.eclipse.jetty.websocket.server.pathmap.PathSpec spec, WebSocketCreator creator);
+    
+    /**
+     * Add a mapping.
+     *
+     * @param spec the path spec to use
+     * @param creator the creator for the mapping
+     * @since 9.2.20
+     */
+    void addMapping(org.eclipse.jetty.http.pathmap.PathSpec spec, WebSocketCreator creator);
+    
+    /**
      * Get the creator for the specific path spec.
      *
      * @param spec the spec to test for (using the same spec syntax as seen in {@link #addMapping(String, WebSocketCreator)})
